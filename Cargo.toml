@@ -1,5 +1,7 @@
 [package]
 name = "grrs"
+description = "A tool to search files"
+readme = "README.md"
 authors = ["Logan Jerrow <Logan.Jerrow@gmail.com>"]
 version = "0.1.0"
 edition = "2021"

@@ -66,10 +66,7 @@ fn main() -> anyhow::Result<()> {
 
     let stdout = std::io::stdout();
     let mut writer = std::io::BufWriter::new(stdout.lock());
-    contents
-        .lines()
-        .filter(|line| line.contains(&cli.pattern))
-        .try_for_each(|line| writeln!(writer, "{line}"))?;
+    grrs::find_matches(&content, &cli.pattern, &mut writer)?;
 
     pb.finish_and_clear();
     info!("Flushing writer");

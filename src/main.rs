@@ -1,7 +1,7 @@
 use anyhow::Context;
 use clap::Parser;
 use indicatif::ProgressBar;
-use log::{error, info};
+use log::{debug, error, info, trace};
 use std::io::{Read, Write};
 
 mod cli {
@@ -35,21 +35,8 @@ fn main() -> anyhow::Result<()> {
         .filter_level(cli.verbose.log_level_filter())
         .init();
 
+    check_args(&cli)?;
     let path = &cli.path;
-
-    info!("pattern: '{}'", &cli.pattern);
-    if cli.pattern.is_empty() {
-        error!("pattern is empty");
-    }
-    info!("path entered: '{}'", path.display());
-    match cli.path.try_exists() {
-        Ok(true) => info!("path exists"),
-        Ok(false) => info!("path does not exists"),
-        Err(e) => error!(
-            "error checking existince of path: '{}', '{e}'",
-            path.display()
-        ),
-    }
 
     // TODO: once_cell the progress bar
     let pb = ProgressBar::new_spinner();
@@ -77,5 +64,36 @@ fn main() -> anyhow::Result<()> {
     info!("Flushing writer");
     writer.flush()?;
 
+    Ok(())
+}
+
+/// For logging argument values
+///
+/// While there might as well check too.
+/// Clap should catch empty arguments before its called
+fn check_args(cli: &cli::Cli) -> anyhow::Result<()> {
+    info!(target: "args", "validating args...");
+    debug!(target: "pattern", "pattern: '{}'", &cli.pattern);
+    debug!(target: "path", "path entered: '{}'", cli.path.display());
+
+    // don't need to check if pattern is empty
+    // ['clap(value_parser = NonEmptyStringValueParser::new()']
+
+    match cli.path.try_exists() {
+        Ok(true) => trace!(target: "path", "path exists"),
+        Ok(false) => {
+            let e = "path does not exists";
+            error!(target: "path", "{e}");
+            anyhow::bail!(e);
+        }
+        Err(e) => {
+            // i.e. lack of permissions
+            let e = format!("error while checking existince of path: {e}");
+            error!(target: "path", "{e}");
+            anyhow::bail!(e);
+        }
+    }
+
+    info!(target: "args", "validating args done");
     Ok(())
 }

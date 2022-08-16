@@ -2,6 +2,7 @@ use anyhow::Context;
 use clap::Parser;
 use indicatif::ProgressBar;
 use log::{debug, error, info, trace};
+use once_cell::sync::Lazy;
 use std::io::{Read, Write};
 
 mod cli {
@@ -30,6 +31,12 @@ mod cli {
 // TODO: use crossbeam-channel for ctrl-c interrupts
 // TODO: maybe use proptest crate
 fn main() -> anyhow::Result<()> {
+    static SPINNER: Lazy<ProgressBar> = Lazy::new(|| {
+        let pb = ProgressBar::new_spinner();
+        pb.enable_steady_tick(std::time::Duration::from_millis(120));
+        pb
+    });
+
     let cli = cli::Cli::parse();
     env_logger::Builder::new()
         .filter_level(cli.verbose.log_level_filter())
@@ -38,10 +45,7 @@ fn main() -> anyhow::Result<()> {
     check_args(&cli)?;
     let path = &cli.path;
 
-    // TODO: once_cell the progress bar
-    let pb = ProgressBar::new_spinner();
-    pb.enable_steady_tick(std::time::Duration::from_millis(120));
-    pb.set_message(format!("Reading file: {}", path.display()));
+    SPINNER.set_message(format!("Reading file: {}", path.display()));
 
     // TODO: extract into function
     let file = std::fs::File::open(path)
@@ -54,13 +58,13 @@ fn main() -> anyhow::Result<()> {
         .read_to_string(&mut content)
         .with_context(|| format!("error while reading file: {}", path.display()))?;
 
-    pb.set_message(format!("Searching for {}", &cli.pattern));
+    SPINNER.set_message(format!("Searching for {}", &cli.pattern));
 
     let stdout = std::io::stdout();
     let mut writer = std::io::BufWriter::new(stdout.lock());
     grrs::find_matches(&content, &cli.pattern, &mut writer)?;
 
-    pb.finish_and_clear();
+    SPINNER.finish_and_clear();
     info!("Flushing writer");
     writer.flush()?;
 

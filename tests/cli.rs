@@ -11,7 +11,7 @@ const NAME: &str = env!("CARGO_PKG_NAME");
 #[test]
 fn file_doesnt_exist() -> TestResult {
     let mut cmd = Command::cargo_bin(NAME)?;
-    cmd.arg("foo").arg("does/not/exist.txt");
+    cmd.arg("foo").arg("does/not/exist.txt").arg("-vvvv");
     cmd.assert()
         .failure()
         .stderr(predicates::str::contains("path does not exists"));
@@ -25,7 +25,7 @@ fn no_match() -> TestResult {
     temp.write_str("A test\nActual content\nMore content\nAnother test")?;
 
     let mut cmd = Command::cargo_bin(NAME)?;
-    cmd.arg("foobar").arg(temp.path());
+    cmd.arg("foobar").arg(temp.path()).arg("-vvvv");
     cmd.assert().success().stdout(predicates::str::is_empty());
 
     Ok(())
@@ -36,7 +36,7 @@ fn empty_pattern() -> TestResult {
     let temp = NamedTempFile::new("temp_test.txt")?;
 
     let mut cmd = Command::cargo_bin(NAME)?;
-    cmd.arg("").arg(temp.path());
+    cmd.arg("").arg(temp.path()).arg("-vvvv");
     cmd.assert().failure().stderr(predicates::str::contains(
         "error: The argument '<PATTERN>' requires a value but none was supplied",
     ));
@@ -47,7 +47,7 @@ fn empty_pattern() -> TestResult {
 #[test]
 fn empty_path() -> TestResult {
     let mut cmd = Command::cargo_bin(NAME)?;
-    cmd.arg("foo").arg("");
+    cmd.arg("foo").arg("").arg("-vvvv");
     cmd.assert().failure().stderr(predicates::str::contains(
         "error: The argument '<PATH>' requires a value but none was supplied",
     ));
@@ -62,12 +62,13 @@ fn file_with_non_utf8() -> TestResult {
     temp.write_binary(invalid)?;
 
     let mut cmd = Command::cargo_bin(NAME)?;
-    cmd.arg("foobar").arg(temp.path());
-    cmd.assert().failure().stderr(
-        predicates::str::contains("Error: error while reading file:").and(
+    cmd.arg("foobar").arg(temp.path()).arg("-vvvv");
+    cmd.assert()
+        .failure()
+        .stderr(predicates::str::contains("Error: while reading file:").and(
             predicates::str::contains("stream did not contain valid UTF-8"),
-        ),
-    );
+        ))
+        .code(exitcode::IOERR);
 
     Ok(())
 }
@@ -78,7 +79,7 @@ fn find_contents_in_file() -> TestResult {
     temp.write_str("A test\nActual content\nMore content\nAnother test")?;
 
     let mut cmd = Command::cargo_bin(NAME)?;
-    cmd.arg("test").arg(temp.path());
+    cmd.arg("test").arg(temp.path()).arg("-vvvv");
     cmd.assert()
         .success()
         .stdout(predicates::str::contains("A test\nAnother test"));

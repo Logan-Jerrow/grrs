@@ -6,7 +6,7 @@ where
 {
     content
         .lines()
-        .filter(move |line| line.contains(pattern))
+        .filter(|line| line.contains(pattern))
         .try_for_each(|line| writeln!(writer, "{line}"))
 }
 
@@ -14,10 +14,19 @@ where
 mod tests {
     use super::*;
 
+    fn check(input_content: &str, input_pattern: &str, expected_result: &str) {
+        let mut actual_result = vec![];
+        find_matches(input_content, input_pattern, &mut actual_result).unwrap();
+        assert_eq!(actual_result, expected_result.as_bytes());
+    }
+
     #[test]
     fn find_a_match() {
-        let mut result = vec![];
-        find_matches("lorem ipsum\ndolor sit amet", "lorem", &mut result).unwrap();
-        assert_eq!(result, b"lorem ipsum\n");
+        check("lorem ipsum\ndolor sit amet", "lorem", "lorem ipsum\n");
+    }
+
+    #[test]
+    fn find_none() {
+        check("lorem ipsum\ndolor sit amet", "@@@", "");
     }
 }

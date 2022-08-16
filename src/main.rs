@@ -1,7 +1,7 @@
 use anyhow::Context;
 use clap::Parser;
 use indicatif::ProgressBar;
-use log::info;
+use log::{error, info};
 use std::io::{Read, Write};
 
 mod cli {
@@ -37,13 +37,18 @@ fn main() -> anyhow::Result<()> {
 
     let path = &cli.path;
 
-    info!("Pattern: {}", &cli.pattern);
+    info!("pattern: '{}'", &cli.pattern);
     if cli.pattern.is_empty() {
-        log::error!("pattern is empty");
+        error!("pattern is empty");
     }
-    info!("Path: {}", path.display());
-    if cli.path.exists() {
-        log::error!("path does not exist: {}", path.display());
+    info!("path entered: '{}'", path.display());
+    match cli.path.try_exists() {
+        Ok(true) => info!("path exists"),
+        Ok(false) => info!("path does not exists"),
+        Err(e) => error!(
+            "error checking existince of path: '{}', '{e}'",
+            path.display()
+        ),
     }
 
     // TODO: once_cell the progress bar

@@ -14,7 +14,7 @@ fn file_doesnt_exist() -> TestResult {
     cmd.arg("foo").arg("does/not/exist.txt");
     cmd.assert()
         .failure()
-        .stderr(predicates::str::contains("could not read file"));
+        .stderr(predicates::str::contains("path does not exists"));
 
     Ok(())
 }

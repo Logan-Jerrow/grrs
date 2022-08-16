@@ -27,46 +27,27 @@ mod cli {
     }
 }
 
+static SPINNER: Lazy<ProgressBar> = Lazy::new(|| {
+    let pb = ProgressBar::new_spinner();
+    pb.enable_steady_tick(std::time::Duration::from_millis(120));
+    pb
+});
+
 // TODO: use exitcode crate
 // TODO: use crossbeam-channel for ctrl-c interrupts
 // TODO: maybe use proptest crate
 fn main() -> anyhow::Result<()> {
-    static SPINNER: Lazy<ProgressBar> = Lazy::new(|| {
-        let pb = ProgressBar::new_spinner();
-        pb.enable_steady_tick(std::time::Duration::from_millis(120));
-        pb
-    });
-
     let cli = cli::Cli::parse();
     env_logger::Builder::new()
         .filter_level(cli.verbose.log_level_filter())
         .init();
 
     check_args(&cli)?;
+
     let path = &cli.path;
+    let content = get_contents(path)?;
 
-    SPINNER.set_message(format!("Reading file: {}", path.display()));
-
-    // TODO: extract into function
-    let file = std::fs::File::open(path)
-        .with_context(|| format!("could not read file: {}", path.display()))?;
-    info!("File opened");
-    let mut reader = std::io::BufReader::new(file);
-
-    let mut content = String::new();
-    reader
-        .read_to_string(&mut content)
-        .with_context(|| format!("error while reading file: {}", path.display()))?;
-
-    SPINNER.set_message(format!("Searching for {}", &cli.pattern));
-
-    let stdout = std::io::stdout();
-    let mut writer = std::io::BufWriter::new(stdout.lock());
-    grrs::find_matches(&content, &cli.pattern, &mut writer)?;
-
-    SPINNER.finish_and_clear();
-    info!("Flushing writer");
-    writer.flush()?;
+    search_file(&content, &cli.pattern)?;
 
     Ok(())
 }
@@ -77,6 +58,7 @@ fn main() -> anyhow::Result<()> {
 /// Clap should catch empty arguments before its called
 fn check_args(cli: &cli::Cli) -> anyhow::Result<()> {
     info!(target: "args", "validating args...");
+
     debug!(target: "pattern", "pattern: '{}'", &cli.pattern);
     debug!(target: "path", "path entered: '{}'", cli.path.display());
 
@@ -99,5 +81,40 @@ fn check_args(cli: &cli::Cli) -> anyhow::Result<()> {
     }
 
     info!(target: "args", "validating args done");
+    Ok(())
+}
+
+fn get_contents<P: AsRef<std::path::Path>>(path: P) -> anyhow::Result<String> {
+    info!(target: "file", "reading file...");
+
+    let path = path.as_ref();
+    SPINNER.set_message(format!("reading file: {}", path.display()));
+
+    let file = std::fs::File::open(path)
+        .with_context(|| format!("could not read file: {}", path.display()))?;
+    trace!("file opened");
+
+    let mut reader = std::io::BufReader::new(file);
+    let mut content = String::new();
+    reader
+        .read_to_string(&mut content)
+        .with_context(|| format!("error while reading file: {}", path.display()))?;
+
+    info!(target: "file", "read done");
+    Ok(content)
+}
+
+fn search_file(content: &str, pattern: &str) -> anyhow::Result<()> {
+    info!(target: "search", "searching for pattern...");
+    SPINNER.set_message(format!("Searching for {}", pattern));
+
+    let mut writer = std::io::BufWriter::new(std::io::stdout().lock());
+    grrs::find_matches(content, pattern, &mut writer)?;
+
+    SPINNER.finish_and_clear();
+    trace!("flushing writer");
+    writer.flush()?;
+
+    info!(target: "search", "search done");
     Ok(())
 }

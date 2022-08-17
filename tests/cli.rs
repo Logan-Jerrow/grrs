@@ -65,9 +65,11 @@ fn file_with_non_utf8() -> TestResult {
     cmd.arg("foobar").arg(temp.path()).arg("-vvvv");
     cmd.assert()
         .failure()
-        .stderr(predicates::str::contains("Error: while reading file:").and(
-            predicates::str::contains("stream did not contain valid UTF-8"),
-        ))
+        .stderr(
+            predicates::str::contains("while reading file:").and(predicates::str::contains(
+                "stream did not contain valid UTF-8",
+            )),
+        )
         .code(exitcode::IOERR);
 
     Ok(())
